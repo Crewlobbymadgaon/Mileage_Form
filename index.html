@@ -1493,10 +1493,11 @@ function getFortnightRange(dateStr) {
 </script>  
   <script>
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js")
-    .then(() => console.log("Service Worker Registered"));
+  navigator.serviceWorker.register("/Mileage_Form/service-worker.js")
+    .then(() => console.log("Service Worker Registered"))
+    .catch(err => console.log("SW Error:", err));
 }
-  </script>
+</script>
 
 </body>  
 </html>
