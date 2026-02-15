@@ -1,0 +1,1492 @@
+<!DOCTYPE html>  <html>  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+<title>Duty Register</title>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>  <style>  
+body {  
+  font-family: Arial, sans-serif;  
+  background:#f4f6f9;  
+  margin:0;  
+  padding:15px;  
+  overflow-x: hidden;  
+  padding-bottom: 80px;  
+}  
+  
+  
+h2 { text-align:center; }  
+  
+form {  
+  background:#fff;  
+  padding:15px;  
+  border-radius:10px;  
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);  
+  margin-bottom:15px;  
+}  
+  
+input {  
+  width:100%;  
+  padding:8px;  
+  margin:5px 0 10px;  
+}  
+  
+button {  
+  background:#2563eb;  
+  color:#fff;  
+  padding:10px;  
+  border:none;  
+  width:100%;  
+  border-radius:6px;  
+  font-size:16px;  
+}  
+  
+table {  
+  width:100%;  
+  border-collapse:collapse;  
+  background:#fff;  
+}  
+  
+th, td {  
+  padding:6px;  
+  border:1px solid #ddd;  
+  font-size:13px;  
+  text-align:center;  
+}  
+  
+th { background:#2563eb; color:#fff; }  
+  
+.summary {  
+  position: fixed;  
+  bottom: 60px;   /* above bottom nav */  
+  left: 0;  
+  width: 100%;  
+  background: #ffffff;  
+  display: flex;  
+  justify-content: space-around;  
+  padding: 8px 5px;  
+  font-size: 13px;  
+  font-weight: 600;  
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.1);  
+  z-index: 1000;  
+}  
+  
+.summary div {  
+  background: #f3f4f6;  
+  padding: 4px 8px;  
+  border-radius: 8px;  
+}  
+  
+  .caps-input {  
+    text-transform: uppercase;  
+  }  
+  
+/* Fixed form at top */  
+form {  
+  position: sticky;  
+  top: 0;  
+  z-index: 1000;  
+  background:#fff;  
+  padding:15px;  
+  border-radius:10px;  
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);  
+}  
+  
+  
+.table-wrapper {  
+  position: fixed;  
+  top: 120px;      /* below month filter */  
+  bottom: 120px;   /* space for summary + nav */  
+  left: 0;  
+  right: 0;  
+  overflow: auto;  
+  padding: 0 10px;  
+}  
+  
+table {  
+  border-collapse: collapse;  
+  background: #fff;  
+  min-width: 900px;   /* force horizontal scroll */  
+}  
+  
+th, td {  
+  padding: 6px;  
+  border: 1px solid #ddd;  
+  font-size: 13px;  
+  text-align: center;  
+  white-space: nowrap;   /* prevents text wrapping */  
+}  
+  
+.nav {  
+  display:flex;  
+  gap:10px;  
+  margin-bottom:10px;  
+}  
+  
+.nav button {  
+  flex:1;  
+}  
+  
+@media print {  
+  body * {  
+    visibility: hidden;  
+  }  
+  #printArea, #printArea * {  
+    visibility: visible;  
+  }  
+  #printArea {  
+    position:absolute;  
+    left:0;  
+    top:0;  
+    width:100%;  
+  }  
+}  
+  
+.nav button,  
+.delete-btn {  
+  background: transparent;  
+  border: none;  
+  font-size: 18px;  
+  cursor: pointer;  
+  padding: 4px;  
+}  
+  
+.delete-btn:active {  
+  transform: scale(0.9);  
+}  
+  
+.delete-btn:hover {  
+  opacity: 0.7;  
+}  
+  
+.toast {  
+  position: fixed;  
+  bottom: 90px;  
+  
+  left: 15px;  
+  right: 15px;  
+  
+  margin: auto;  
+  width: max-content;  
+  
+  background: #16a34a;  
+  color: white;  
+  padding: 10px 20px;  
+  border-radius: 8px;  
+  font-size: 14px;  
+  
+  opacity: 0;  
+  transition: opacity 0.4s ease;  
+  z-index: 9999;  
+}  
+.toast.show {  
+  opacity: 1;  
+  bottom: 40px;  
+}  
+  
+.bottom-nav {  
+  position: fixed;  
+  bottom: 0;  
+  left: 0;  
+  right: 0;  
+  
+  display: flex;  
+  gap: 8px;  
+  
+  padding: 8px 15px;   /* align with body padding */  
+  background: #ffffff;  
+  
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.1);  
+  z-index: 5000;  
+}  
+  
+.bottom-nav button {  
+  flex: 1;  
+  background: #2563eb;  
+  color: white;  
+  border: none;  
+  border-radius: 10px;  
+  
+  padding: 8px 0;      /* reduced height */  
+  font-size: 14px;     /* smaller text */  
+  font-weight: 600;  
+  
+  max-height: 42px;    /* control size */  
+}  
+  
+.bottom-nav button:active {  
+  transform: scale(0.97);  
+}  
+  
+.home-nav {  
+  justify-content: space-between;  
+}  
+  
+.home-nav button {  
+  flex: 1;  
+}  
+  
+.home-nav button:first-child {  
+  background: #16a34a; /* green Add */  
+}  
+  
+.home-nav button:last-child {  
+  background: #2563eb; /* blue View */  
+}  
+  
+  
+  
+.month-filter {  
+  display: flex;  
+  justify-content: center;  
+  position: relative;  
+  margin: 10px 0;  
+}  
+  
+#monthBtn {  
+  background: #2563eb;  
+  color: white;  
+  padding: 8px 16px;  
+  border-radius: 20px;  
+  border: none;  
+  font-size: 14px;  
+}  
+  
+.month-menu {  
+  position: absolute;  
+  top: 45px;  
+  background: white;  
+  border-radius: 8px;  
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);  
+  display: none;  
+  flex-direction: column;  
+  min-width: 160px;  
+  z-index: 2000;  
+}  
+  
+.month-menu div {  
+  padding: 10px;  
+  cursor: pointer;  
+  text-align: center;  
+}  
+  
+.month-menu div:hover {  
+  background: #f3f4f6;  
+}  
+  
+button {  
+  transition: transform 0.1s ease, opacity 0.1s ease;  
+}  
+  
+button {  
+  transition: transform 0.08s ease, opacity 0.08s ease;  
+  -webkit-tap-highlight-color: transparent;  
+}  
+  
+button:active {  
+  transform: scale(0.96);  
+  opacity: 0.85;  
+}  
+  
+.prog-row {  
+  background: #f1f5f9;  
+  font-weight: 600;  
+}  
+  
+.prog-cell {  
+  background: #1d4ed8;   /* deep blue */  
+  color: #ffffff;  
+  font-weight: 700;  
+}  
+.prog-col {  
+  background: #e0f2fe;  
+  color: #0369a1;  
+  font-weight: 600;  
+}  
+.total-row {  
+  background: #fef3c7;   /* soft amber */  
+  color: #92400e;  
+  font-weight: bold;  
+}  
+  
+.total-row td {  
+  border-top: 3px solid #f59e0b;  
+}  
+.table-wrapper {  
+  pointer-events: auto;  
+}  
+  
+.summary {  
+  pointer-events: none;  
+}  
+  
+.summary div {  
+  pointer-events: auto;  
+}  
+  
+.date-wrapper {  
+  position: relative;  
+}  
+  
+#dutyDate {  
+  position: absolute;  
+  inset: 0;  
+  opacity: 0;  
+  z-index: 2;  
+  cursor: pointer;  
+}  
+  
+#displayDate {  
+  width: 100%;  
+  padding: 8px;  
+  box-sizing: border-box;  
+}  
+.cycle-end {  
+  background: transparent !important;   /* no background */  
+  color: #dc2626 !important;            /* red text */  
+  font-weight: 700;  
+  border: 2px solid #dc2626 !important; /* red outline */  
+  border-radius: 6px;  
+}  
+</style>  </head>  <body>  <h2>🚆 Duty Register</h2>  <!-- ================= SETUP PAGE ================= -->  <div id="setupPage" style="display:none;">    <form id="setupForm">  
+    <h3>👤 Crew Setup (One Time)</h3>  <label>Name</label>  
+<input type="text" id="crewName" required>  
+
+<label>Employee ID</label>  
+<input type="text" id="empId" required>  
+
+<label>Depot</label>  
+<input type="text" id="depot" required>  
+
+<button type="button" onclick="saveCrewDetails()">Save</button>
+
+  </form>  </div>  
+<!-- ================= HOME PAGE ================= -->  
+<div id="homePage">  <form id="dutyForm" onsubmit="event.preventDefault(); addDuty();">  
+ <label>Date</label>  <div class="date-wrapper">  
+  <input type="date" id="dutyDate" required>  
+  <input type="text" id="displayDate" placeholder="DD-MM-YYYY" readonly>  
+</div>  
+  <label>Train Number</label>  
+  <input type="text" id="trainNo" required>  <label>From</label>
+<input type="text" id="from" class="caps-input" required>
+
+<label>To</label>
+<input type="text" id="to" class="caps-input" required>
+
+<label>Sign ON</label>
+<input type="time" id="signOn" required>
+
+<label>Sign OFF</label>
+<input type="time" id="signOff" required>
+
+<label>Kilometers</label>
+<input type="number" id="kms" required>
+
+ </form>  
+<div class="bottom-nav home-nav" id="homeNav">  
+<button onclick="submitDuty()" title="Add">  
+   ➕ Add  
+</button>  
+  <button onclick="showView()" title="View">  
+    📊 View  
+  </button>  
+</div>  
+</div>  <!-- ================= VIEW PAGE ================= -->  <div id="viewPage" style="display:none;">  <!-- Month Filter -->  <div class="month-filter">  
+  <button id="monthBtn" onclick="toggleMonthMenu()">  
+    <span id="currentMonthText"></span> ⌄  
+  </button>    <div id="monthMenu" class="month-menu"></div>  
+</div>  <div class="table-wrapper">  
+  <table id="printArea">  
+   <thead>  
+  <tr>  
+    <th>Date</th>  
+    <th>Train</th>  
+    <th>From</th>  
+    <th>To</th>  
+    <th>ON</th>  
+    <th>OFF</th>  
+    <th>Duty Hrs</th>  
+    <th>Night</th>  
+    <th>KM</th>  
+    <th>Prog Duty</th>  
+    <th>Prog Night</th>  
+    <th>Prog KM</th>  
+    <th>Del</th>  
+  </tr>  
+</thead>  
+    <tbody id="dutyTable"></tbody>  
+  </table>  
+</div>  <div class="bottom-nav" id="viewNav">  
+<button onclick="showHome()">➕ Add</button>  
+  <button onclick="exportPDF()" title="Export">📄 Export</button>  
+</div>  
+</div>  
+<div id="toast" class="toast">✅ Duty Added Successfully</div>  
+
+
+<script>  
+  
+
+
+  
+  
+  
+  
+const BASE_CYCLE = new Date("2026-01-25"); // Fixed starting cycle  
+let currentViewDate = new Date();  
+let db;  
+  
+const request = indexedDB.open("DutyDB", 1);  
+  
+request.onupgradeneeded = e => {  
+  db = e.target.result;  
+  db.createObjectStore("duties", { keyPath:"id", autoIncrement:true });  
+};  
+  
+request.onsuccess = e => {  
+  db = e.target.result;  
+  checkFirstTime();  
+  displayDuties();  
+};  
+  
+  
+  
+function calculateMinutes(date, on, off) {  
+  
+  let start = new Date(date + "T" + on);  
+  let end   = new Date(date + "T" + off);  
+  
+  if (end <= start) {  
+    end.setDate(end.getDate() + 1);  
+  }  
+  
+  let diffMs = end - start;  
+  
+  return Math.floor(diffMs / (1000 * 60)); // return total minutes  
+}  
+  
+  
+  
+function minutesToHHMM(totalMinutes) {  
+  
+  let hours = Math.floor(totalMinutes / 60);  
+  let minutes = totalMinutes % 60;  
+  
+  return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;  
+}  
+  
+  
+// Night duty calculation (22:00–06:00)  
+function calculateNightMinutes(date, on, off) {  
+  
+  let start = new Date(date + "T" + on);  
+  let end   = new Date(date + "T" + off);  
+  
+  if (end <= start) {  
+    end.setDate(end.getDate() + 1);  
+  }  
+  
+  let totalNightMinutes = 0;  
+  
+  let currentDay = new Date(start);  
+  
+  while (currentDay < end) {  
+  
+    // Night start 22:00 of current day  
+    let nightStart1 = new Date(currentDay);  
+    nightStart1.setHours(22, 0, 0, 0);  
+  
+    // Midnight  
+    let midnight = new Date(currentDay);  
+    midnight.setHours(24, 0, 0, 0);  
+  
+    // Early morning 00:00–06:00  
+    let nightStart2 = new Date(currentDay);  
+    nightStart2.setHours(0, 0, 0, 0);  
+  
+    let nightEnd2 = new Date(currentDay);  
+    nightEnd2.setHours(6, 0, 0, 0);  
+  
+    // Calculate overlap helper  
+    function overlap(aStart, aEnd, bStart, bEnd) {  
+      return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));  
+    }  
+  
+    // Overlap 22:00–24:00  
+    totalNightMinutes += overlap(start, end, nightStart1, midnight) / (1000*60);  
+  
+    // Overlap 00:00–06:00  
+    totalNightMinutes += overlap(start, end, nightStart2, nightEnd2) / (1000*60);  
+  
+    // Move to next day  
+    currentDay.setDate(currentDay.getDate() + 1);  
+    currentDay.setHours(0,0,0,0);  
+  }  
+  
+  return Math.floor(totalNightMinutes);  
+}  
+  
+function addDuty(){
+
+  const dutyDate = document.getElementById("dutyDate").value;
+  const today = new Date().toISOString().split("T")[0];
+
+  if (dutyDate > today) {
+    showToast("⚠️ Future date not allowed");
+    return;
+  }
+
+  const trainInput = document.getElementById("trainNo").value.trim();
+  const trainValue = trainInput.toUpperCase();   // 🔥 FORCE UPPERCASE
+
+  const from = document.getElementById("from").value.toUpperCase();
+  const to = document.getElementById("to").value.toUpperCase();
+  const signOn = document.getElementById("signOn").value;
+  const signOff = document.getElementById("signOff").value;
+  const kms = Number(document.getElementById("kms").value) || 0;
+
+  if(!dutyDate || !trainInput){
+    showToast("⚠️ Fill required fields");
+    return;
+  }
+
+  // 🔴 Full Disable + 07:25
+  const fullDisable725 = ["SICK","LEAVE"];
+
+  // 🟡 Partial Disable + 07:25
+  const partialDisable725 = ["TRAINING","RC","SPL","ALK"];
+
+  // ⚫ Full Disable + 0:00
+  const zeroDutyTypes = ["PR","WFD"];
+
+  const isFull725 = fullDisable725.some(k => trainValue.includes(k));
+  const isPartial725 = partialDisable725.some(k => trainValue.includes(k));
+  const isZeroDuty = zeroDutyTypes.some(k => trainValue.includes(k));
+
+  let dutyMinutes = 0;
+  let nightMinutes = 0;
+
+  // ================= ZERO DUTY =================
+  if (isZeroDuty) {
+
+    dutyMinutes = 0;
+    nightMinutes = 0;
+
+  }
+  // ================= 07:25 TYPES =================
+  else if (isFull725 || isPartial725) {
+
+    dutyMinutes = (7 * 60) + 25;
+    nightMinutes = 0;
+
+  }
+  // ================= NORMAL TRAIN =================
+  else {
+
+    if(!from || !to || !signOn || !signOff || !kms){
+      showToast("⚠️ Fill all fields");
+      return;
+    }
+
+    dutyMinutes = calculateMinutes(dutyDate, signOn, signOff);
+    nightMinutes = calculateNightMinutes(dutyDate, signOn, signOff);
+  }
+
+  const duty = {
+    dutyDate,
+    trainNo: trainValue,   // 🔥 SAVE ALWAYS UPPERCASE
+    from: (isFull725 || isPartial725 || isZeroDuty) ? "" : from,
+    to: (isFull725 || isPartial725 || isZeroDuty) ? "" : to,
+    signOn: (isFull725 || isPartial725 || isZeroDuty) ? "" : signOn,
+    signOff: (isFull725 || isPartial725 || isZeroDuty) ? "" : signOff,
+    kms: (isFull725 || isZeroDuty) ? 0 : kms,
+    dutyMinutes,
+    nightMinutes
+  };
+
+  const tx = db.transaction("duties","readwrite");
+  tx.objectStore("duties").add(duty);
+
+  tx.oncomplete = () => {
+
+    showToast("✅ Duty Added");
+    document.getElementById("dutyForm").reset();
+
+    // 🔥 Re-enable fields after reset
+    document.getElementById("from").disabled = false;
+    document.getElementById("to").disabled = false;
+    document.getElementById("signOn").disabled = false;
+    document.getElementById("signOff").disabled = false;
+    document.getElementById("kms").disabled = false;
+
+    displayDuties();
+  };
+}
+  
+function checkFirstTime() {  
+  
+  let crew = localStorage.getItem("crewDetails");  
+  
+  if (!crew) {  
+    document.getElementById("setupPage").style.display = "block";  
+    document.getElementById("homePage").style.display = "none";  
+  } else {  
+    document.getElementById("setupPage").style.display = "none";  
+    document.getElementById("homePage").style.display = "block";  
+  }  
+}  
+  
+function saveCrewDetails() {  
+  
+  const name = document.getElementById("crewName").value;  
+  const empId = document.getElementById("empId").value;  
+  const depot = document.getElementById("depot").value;  
+  
+  if (!name || !empId || !depot) {  
+    alert("Fill all details");  
+    return;  
+  }  
+  
+  const crew = {  
+    name,  
+    empId,  
+    depot  
+  };  
+  
+  localStorage.setItem("crewDetails", JSON.stringify(crew));  
+  
+  checkFirstTime();  
+}  
+function displayDuties(){  
+  
+  const tbody = document.getElementById("dutyTable");  
+  tbody.innerHTML = "";  
+  
+  const tx = db.transaction("duties","readonly");  
+  const store = tx.objectStore("duties");  
+  const req = store.getAll();  
+  
+  req.onsuccess = () => {  
+  
+    let data = req.result;  
+    if (data.length === 0) return;  
+  
+    data.sort((a,b)=> new Date(a.dutyDate) - new Date(b.dutyDate));  
+  
+    // Selected month  
+    let currentMonth = selectedMonth   
+      ? selectedMonth   
+      : new Date().toISOString().slice(0,7);  
+  
+    // Filter month data  
+    let monthData = data.filter(d =>  
+      d.dutyDate.startsWith(currentMonth)  
+    );  
+      
+  
+    /* ---------------------------  
+       1️⃣ Calculate FULL cycle totals  
+    ---------------------------- */  
+    let totalNight = 0;  
+let totalKM = 0;  
+  
+let progNight = 0;  
+let progKM = 0;  
+  
+let cycleRunning = {};   // 🔵 stores progressive for full dataset  
+let rows = "";  
+  
+/* ---------------------------  
+   1️⃣ Build FULL progressive cycle duty (ALL DATA)  
+---------------------------- */  
+  
+data.forEach(d => {  
+  
+  let fn = getFortnightRange(d.dutyDate);  
+  let key = fn.start + "_" + fn.end;  
+  
+  if (!cycleRunning[key]) {  
+    cycleRunning[key] = 0;  
+  }  
+  
+  cycleRunning[key] += d.dutyMinutes;  
+  
+  d._cycleProg = cycleRunning[key];  
+});  
+  
+    /* ---------------------------  
+       2️⃣ Build month rows with progressive  
+    ---------------------------- */  
+    monthData.forEach(d => {  
+  
+  totalNight += d.nightMinutes;  
+  totalKM += d.kms;  
+  
+  progNight += d.nightMinutes;  
+  progKM += d.kms;  
+  
+  let fn = getFortnightRange(d.dutyDate);  
+  
+// Get all duties inside this cycle  
+let cycleDuties = data.filter(x =>  
+  x.dutyDate >= fn.start && x.dutyDate <= fn.end  
+);  
+  
+if (cycleDuties.length === 0) {  
+  var isCycleEnd = false;  
+} else {  
+  
+  // Calculate real end datetime for each duty  
+  cycleDuties.forEach(x => {  
+    let start = new Date(x.dutyDate + "T" + x.signOn);  
+    let end = new Date(x.dutyDate + "T" + x.signOff);  
+  
+    // Overnight adjustment  
+    if (end <= start) {  
+      end.setDate(end.getDate() + 1);  
+    }  
+  
+    x._realEndDateTime = end;  
+  });  
+  
+  // Sort by real end datetime  
+  cycleDuties.sort((a,b) =>  
+    a._realEndDateTime - b._realEndDateTime  
+  );  
+  
+  let lastDuty = cycleDuties[cycleDuties.length - 1];  
+  
+  var isCycleEnd =  
+    d.dutyDate === lastDuty.dutyDate &&  
+    d.signOn === lastDuty.signOn &&  
+    d.signOff === lastDuty.signOff;  
+}  
+  
+  let progClass = isCycleEnd ? "prog-col cycle-end" : "prog-col";  
+  
+  rows += `<tr>  
+     <td>${formatDate(d.dutyDate)}</td>  
+     <td>${d.trainNo}</td>  
+     <td>${d.from}</td>  
+     <td>${d.to}</td>  
+     <td>${d.signOn}</td>  
+     <td>${d.signOff}</td>  
+     <td>${minutesToHHMM(d.dutyMinutes)}</td>  
+     <td>${minutesToHHMM(d.nightMinutes)}</td>  
+     <td>${d.kms}</td>  
+  
+     <td class="${progClass}">  
+       ${minutesToHHMM(d._cycleProg)}  
+     </td>  
+  
+     <td class="prog-col">${minutesToHHMM(progNight)}</td>  
+     <td class="prog-col">${progKM}</td>  
+  
+     <td>  
+       <button onclick="deleteDuty(${d.id})"  
+         class="delete-btn">🗑️</button>  
+     </td>  
+  </tr>`;  
+});  
+  
+/* ===============================  
+   3️⃣ Show Cycle Totals (Smart Month Logic)  
+=============================== */  
+  
+let cycleTotals = {};  
+  
+data.forEach(d => {  
+  
+  let fn = getFortnightRange(d.dutyDate);  
+  let key = fn.start + "_" + fn.end;  
+  
+  if (!cycleTotals[key]) {  
+    cycleTotals[key] = {  
+      start: fn.start,  
+      end: fn.end,  
+      fullDuty: 0,  
+      monthDuty: 0  
+    };  
+  }  
+  
+  cycleTotals[key].fullDuty += d.dutyMinutes;  
+  
+  // If duty belongs to selected month  
+  if (d.dutyDate.startsWith(currentMonth)) {  
+    cycleTotals[key].monthDuty += d.dutyMinutes;  
+  }  
+});  
+  
+Object.values(cycleTotals)  
+  .filter(cycle =>  
+    cycle.start.slice(0,7) === currentMonth ||  
+    cycle.end.slice(0,7) === currentMonth  
+  )  
+  .sort((a,b)=> new Date(a.start) - new Date(b.start))  
+  .forEach(cycle => {  
+  
+    let dutyToShow;  
+  
+    // 🔵 If cycle ends in selected month → show FULL total  
+    if (cycle.end.slice(0,7) === currentMonth) {  
+      dutyToShow = cycle.fullDuty;  
+    }  
+    else {  
+      // 🔵 Otherwise show only month portion (fixes January)  
+      dutyToShow = cycle.monthDuty;  
+    }  
+  
+    rows += `<tr class="total-row">  
+      <td colspan="6"></td>  
+      <td>  
+        <strong>${minutesToHHMM(dutyToShow)}</strong>  
+        <br>  
+        <small>  
+          (${formatDate(cycle.start)} to ${formatDate(cycle.end)})  
+        </small>  
+      </td>  
+      <td colspan="6"></td>  
+    </tr>`;  
+  });  
+  
+    /* ---------------------------  
+       4️⃣ Monthly Night & KM Total  
+    ---------------------------- */  
+    rows += `<tr class="total-row">  
+      <td colspan="7"></td>  
+      <td><strong>${minutesToHHMM(totalNight)}</strong></td>  
+      <td><strong>${totalKM}</strong></td>  
+      <td colspan="4"></td>  
+    </tr>`;  
+  
+    tbody.innerHTML = rows;  
+  
+    document.getElementById("currentMonthText").textContent =  
+      formatMonthDisplay(currentMonth);  
+  };  
+}  
+  
+function formatDate(dateStr){  
+  const d = new Date(dateStr);  
+  const day = String(d.getDate()).padStart(2,'0');  
+  const month = String(d.getMonth()+1).padStart(2,'0');  
+  const year = d.getFullYear();  
+  return `${day}-${month}-${year}`;  
+}  
+  
+  
+  
+async function exportPDF() {  
+  
+  showView();  
+  
+  const { jsPDF } = window.jspdf;  
+  const doc = new jsPDF("p", "mm", "a4");  
+  
+  let y = 15;  
+  const pageWidth = doc.internal.pageSize.getWidth();  
+  
+  // ================= TITLE =================  
+  doc.setFontSize(18);  
+  doc.setFont(undefined, "bold");  
+  doc.text("DUTY REGISTER", pageWidth / 2, y, { align: "center" });  
+  
+  y += 10;  
+  
+  // ================= CREW DETAILS =================  
+  const crew = JSON.parse(localStorage.getItem("crewDetails") || "{}");  
+  const monthText = document.getElementById("currentMonthText").textContent;  
+  
+  doc.setFontSize(10);  
+  doc.setFont(undefined, "normal");  
+  
+  if (crew.name) {  
+    doc.text(  
+      `Name: ${crew.name}   |   Emp ID: ${crew.empId}   |   Depot: ${crew.depot}`,  
+      pageWidth / 2,  
+      y,  
+      { align: "center" }  
+    );  
+    y += 6;  
+  }  
+  
+  doc.text("Month: " + monthText, pageWidth / 2, y, { align: "center" });  
+  
+  y += 12;  
+  
+  // ================= TABLE CONFIG =================  
+  
+  const headerRow1 = [  
+    "Date","Train","From","To","ON","OFF",  
+    "Duty","Night","KM",  
+    "PROGRESSIVE","",""  
+  ];  
+  
+  const headerRow2 = [  
+    "","","","","","","","","",  
+    "Duty","Night","KM"  
+  ];  
+  
+  const columnWidths = [18,13,15,15,12,12,14,14,12,14,14,14];  
+  doc.setFontSize(8);  
+  
+  function drawGroupedHeader() {  
+  
+    const tableWidth = columnWidths.reduce((a,b)=>a+b,0);  
+    let x = (pageWidth - tableWidth) / 2;  
+  
+    doc.setFont(undefined, "bold");  
+  
+    const headerHeight = 6;  
+    const mergedHeight = 12;  
+  
+    // Vertically merged Date → KM  
+    for (let i = 0; i < 9; i++) {  
+  
+      doc.rect(x, y - 4, columnWidths[i], mergedHeight);  
+  
+      doc.text(  
+        headerRow1[i],  
+        x + columnWidths[i] / 2,  
+        y + 2,  
+        { align: "center", baseline: "middle" }  
+      );  
+  
+      x += columnWidths[i];  
+    }  
+  
+    // PROGRESSIVE top merge  
+    const progressiveWidth =  
+      columnWidths[9] + columnWidths[10] + columnWidths[11];  
+  
+    doc.rect(x, y - 4, progressiveWidth, headerHeight);  
+  
+    doc.text(  
+      "PROGRESSIVE",  
+      x + progressiveWidth / 2,  
+      y - 1,  
+      { align: "center", baseline: "middle" }  
+    );  
+  
+    // Progressive sub headers  
+    let x2 = x;  
+    y += 6;  
+  
+    for (let i = 9; i < columnWidths.length; i++) {  
+  
+      doc.rect(x2, y - 4, columnWidths[i], headerHeight);  
+  
+      doc.text(  
+        headerRow2[i],  
+        x2 + columnWidths[i] / 2,  
+        y - 1,  
+        { align: "center", baseline: "middle" }  
+      );  
+  
+      x2 += columnWidths[i];  
+    }  
+  
+    y += 6;  
+  }  
+  
+  function drawRow(row) {  
+  
+    const tableWidth = columnWidths.reduce((a,b)=>a+b,0);  
+    let x = (pageWidth - tableWidth) / 2;  
+  
+    doc.setFont(undefined, "normal");  
+  
+    row.forEach((cell, i) => {  
+  
+      const cellWidth = columnWidths[i];  
+      const cellHeight = 6;  
+  
+      doc.rect(x, y - 4, cellWidth, cellHeight);  
+  
+      let text = String(cell);  
+      const maxWidth = cellWidth - 2;  
+  
+      if (doc.getTextWidth(text) > maxWidth) {  
+        while (doc.getTextWidth(text + "...") > maxWidth && text.length > 0) {  
+          text = text.slice(0, -1);  
+        }  
+        text += "...";  
+      }  
+  
+      doc.text(  
+        text,  
+        x + cellWidth / 2,  
+        y - 1,  
+        { align: "center", baseline: "middle" }  
+      );  
+  
+      x += cellWidth;  
+    });  
+  
+    y += 6;  
+  
+    if (y > 270) {  
+      doc.addPage();  
+      y = 20;  
+      drawGroupedHeader();  
+    }  
+  }  
+  
+  // Draw header  
+  drawGroupedHeader();  
+  
+  // ================= DRAW TABLE DATA =================  
+  
+  const rows = document.querySelectorAll("#dutyTable tr");  
+  
+  rows.forEach(row => {  
+  
+    if (row.classList.contains("total-row")) return;  
+  
+    const cells = row.querySelectorAll("td");  
+    if (!cells[0]) return;  
+  
+    let rowData = [];  
+  
+    cells.forEach((cell, index) => {  
+      if (index !== 12) {  
+        rowData.push(cell.innerText.replace(/\n/g, " "));  
+      }  
+    });  
+  
+    drawRow(rowData);  
+  });  
+  
+  // ================= CALCULATE TOTALS =================  
+  
+  let cycleMap = {};  
+  let totalNightMinutes = 0;  
+  let totalKM = 0;  
+  
+  rows.forEach(row => {  
+  
+    if (row.classList.contains("total-row")) return;  
+  
+    const cells = row.querySelectorAll("td");  
+    if (!cells[0]) return;  
+  
+    const dateText = cells[0].innerText;  
+    const parts = dateText.split("-");  
+    const formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;  
+  
+    const fn = getFortnightRange(formattedDate);  
+    const key = fn.start + "_" + fn.end;  
+  
+    if (!cycleMap[key]) {  
+      cycleMap[key] = {  
+        duty: 0,  
+        start: fn.start,  
+        end: fn.end  
+      };  
+    }  
+  
+    const dutyParts = cells[6]?.innerText.split(":");  
+    if (dutyParts?.length === 2) {  
+      cycleMap[key].duty +=  
+        (parseInt(dutyParts[0]) * 60) + parseInt(dutyParts[1]);  
+    }  
+  
+    const nightParts = cells[7]?.innerText.split(":");  
+    if (nightParts?.length === 2) {  
+      totalNightMinutes +=  
+        (parseInt(nightParts[0]) * 60) + parseInt(nightParts[1]);  
+    }  
+  
+    totalKM += parseInt(cells[8]?.innerText) || 0;  
+  });  
+  
+  const cycleKeys = Object.keys(cycleMap);  
+  let selectedCycle = null;  
+  
+  if (cycleKeys.length > 0) {  
+    selectedCycle = cycleMap[cycleKeys[cycleKeys.length - 1]];  
+  }  
+  
+// ================= SUMMARY =================  
+  
+y += 12;  
+  
+if (y > 240) {  
+  doc.addPage();  
+  y = 20;  
+}  
+  
+doc.setFontSize(13);  
+doc.setFont(undefined, "bold");  
+doc.setTextColor(30, 64, 175);  
+doc.text("SUMMARY", pageWidth / 2, y, { align: "center" });  
+  
+y += 10;  
+  
+doc.setFontSize(11);  
+doc.setFont(undefined, "normal");  
+doc.setTextColor(0, 0, 0);  
+  
+const summaryWidth = 150;  
+const summaryHeight = 34;  
+const boxX = (pageWidth - summaryWidth) / 2;  
+const textX = boxX + 8; // left padding inside box  
+  
+// Background  
+doc.setFillColor(239, 246, 255);  
+doc.rect(boxX, y - 8, summaryWidth, summaryHeight, "F");  
+  
+// Border  
+doc.setDrawColor(59, 130, 246);  
+doc.rect(boxX, y - 8, summaryWidth, summaryHeight);  
+  
+if (!selectedCycle) {  
+  
+  doc.setTextColor(220, 38, 38);  
+  doc.text(  
+    "No Duty Data Available For This Month",  
+    textX,  
+    y + 8  
+  );  
+  
+} else {  
+  
+  doc.setTextColor(0, 0, 0);  
+  
+  doc.text(  
+    "Total Duty Hours : " +  
+    minutesToHHMM(selectedCycle.duty) +  
+    "  (" +  
+    formatDate(selectedCycle.start) +  
+    " to " +  
+    formatDate(selectedCycle.end) +  
+    ")",  
+    textX,  
+    y  
+  );  
+  
+  y += 10;  
+  
+  doc.text(  
+    "Total Night Hours : " + minutesToHHMM(totalNightMinutes),  
+    textX,  
+    y  
+  );  
+  
+  y += 8;  
+  
+  doc.text(  
+    "Total Kilometers  : " + totalKM,  
+    textX,  
+    y  
+  );  
+}  
+  
+  // ================= PAGE NUMBERS =================  
+  
+  const pageCount = doc.getNumberOfPages();  
+  
+  for (let i = 1; i <= pageCount; i++) {  
+    doc.setPage(i);  
+    doc.setFontSize(8);  
+    doc.text(  
+      "Page " + i + " of " + pageCount,  
+      pageWidth / 2,  
+      290,  
+      { align: "center" }  
+    );  
+  }  
+  
+  doc.save("Duty_Register_" + monthText.replace(" ", "_") + ".pdf");  
+}  
+  
+function deleteDuty(id){
+  const tx = db.transaction("duties","readwrite");
+  tx.objectStore("duties").delete(id);
+  tx.oncomplete = () => displayDuties();
+}
+  
+  
+function showToast(message){  
+  const toast = document.getElementById("toast");  
+  toast.textContent = message;  
+  toast.classList.add("show");  
+  
+  setTimeout(()=>{  
+    toast.classList.remove("show");  
+  }, 2000);  
+}  
+  
+  
+  
+let selectedMonth = "";  
+  
+function loadMonthMenu(){  
+  const tx = db.transaction("duties","readonly");  
+  const store = tx.objectStore("duties");  
+  const req = store.getAll();  
+  
+  req.onsuccess = () => {  
+  
+    const data = req.result;  
+    const monthSet = new Set();  
+  
+    data.forEach(d=>{  
+      monthSet.add(d.dutyDate.slice(0,7));  
+    });  
+  
+    const menu = document.getElementById("monthMenu");  
+    menu.innerHTML = "";  
+  
+    const months = Array.from(monthSet).sort().reverse();  
+  
+    months.forEach(month=>{  
+      const div = document.createElement("div");  
+      div.textContent = formatMonthDisplay(month);  
+      div.onclick = ()=>{  
+        selectedMonth = month;  
+        document.getElementById("currentMonthText").textContent =  
+          formatMonthDisplay(month);  
+        menu.style.display = "none";  
+        displayDuties();  
+      };  
+      menu.appendChild(div);  
+    });  
+  
+    // Default = current month  
+    const current = new Date().toISOString().slice(0,7);  
+    selectedMonth = current;  
+  
+    document.getElementById("currentMonthText").textContent =  
+      formatMonthDisplay(current);  
+  
+    displayDuties();  
+  
+  };  // ✅ close onsuccess  
+}     // ✅ close function  
+  
+  
+  
+function toggleMonthMenu(){  
+  const menu = document.getElementById("monthMenu");  
+  menu.style.display =  
+    menu.style.display === "flex" ? "none" : "flex";  
+}  
+  
+  
+function formatMonthDisplay(monthStr){  
+  const date = new Date(monthStr + "-01");  
+  return date.toLocaleString("default", {  
+    month: "long",  
+    year: "numeric"  
+  });  
+}  
+  
+  
+  
+function showHome(){  
+  
+  document.getElementById("homePage").style.display = "block";  
+  document.getElementById("viewPage").style.display = "none";  
+  
+  window.scrollTo(0,0); // reset scroll  
+}  
+  
+  
+  
+function showView(){  
+  
+  document.getElementById("homePage").style.display = "none";  
+  document.getElementById("viewPage").style.display = "block";  
+  
+  loadMonthMenu();  
+}  
+  
+  
+  
+  
+  
+function submitDuty(){  
+  document.getElementById("dutyForm").requestSubmit();  
+}  
+  
+  
+document.getElementById("dutyDate").addEventListener("input", function() {  
+  const value = this.value;  
+  if (!value) return;  
+  
+  const d = new Date(value);  
+  const day = String(d.getDate()).padStart(2,'0');  
+  const month = String(d.getMonth()+1).padStart(2,'0');  
+  const year = d.getFullYear();  
+  
+  document.getElementById("displayDate").value =  
+    `${day}-${month}-${year}`;  
+      
+  updateDisplayDate(this.value);  
+  
+});  
+  
+document.addEventListener("DOMContentLoaded", function () {  
+  
+  const today = new Date().toISOString().split("T")[0];  
+  const dateInput = document.getElementById("dutyDate");  
+  const display = document.getElementById("displayDate");  
+  document.getElementById("trainNo").addEventListener("input", function() {
+
+  const value = this.value.toUpperCase();
+
+  const fullDisable725 = ["SICK","LEAVE"];
+  const partialDisable725 = ["TRAINING","RC","SPL","ALK"];
+  const zeroDutyTypes = ["PR","WFD"];
+
+  const isFull725 = fullDisable725.some(k => value.includes(k));
+  const isPartial725 = partialDisable725.some(k => value.includes(k));
+  const isZeroDuty = zeroDutyTypes.some(k => value.includes(k));
+
+  const from = document.getElementById("from");
+  const to = document.getElementById("to");
+  const signOn = document.getElementById("signOn");
+  const signOff = document.getElementById("signOff");
+  const kms = document.getElementById("kms");
+
+  // 🔴 PR / WFD (ALL DISABLE)
+  if (isZeroDuty) {
+
+    from.disabled = true;
+    to.disabled = true;
+    signOn.disabled = true;
+    signOff.disabled = true;
+    kms.disabled = true;
+
+    from.value = "";
+    to.value = "";
+    signOn.value = "";
+    signOff.value = "";
+    kms.value = "";
+
+  }
+
+  // 🟡 SICK / LEAVE (ALL DISABLE)
+  else if (isFull725) {
+
+    from.disabled = true;
+    to.disabled = true;
+    signOn.disabled = true;
+    signOff.disabled = true;
+    kms.disabled = true;
+
+  }
+
+  // 🔵 TRAINING / RC / SPL / ALK (KM ENABLED)
+  else if (isPartial725) {
+
+    from.disabled = true;
+    to.disabled = true;
+    signOn.disabled = true;
+    signOff.disabled = true;
+    kms.disabled = false;
+
+  }
+
+  // 🟢 NORMAL TRAIN
+  else {
+
+    from.disabled = false;
+    to.disabled = false;
+    signOn.disabled = false;
+    signOff.disabled = false;
+    kms.disabled = false;
+
+  }
+
+});
+  dateInput.setAttribute("max", today);  
+  dateInput.value = today;  
+  
+  // Manually update display field  
+  updateDisplayDate(today);  
+  
+});  
+  
+function updateDisplayDate(value) {  
+  if (!value) return;  
+  
+  const d = new Date(value);  
+  const day = String(d.getDate()).padStart(2,'0');  
+  const month = String(d.getMonth()+1).padStart(2,'0');  
+  const year = d.getFullYear();  
+  
+  document.getElementById("displayDate").value =  
+    `${day}-${month}-${year}`;  
+}  
+  
+function getFortnightRange(dateStr) {  
+  
+  const current = new Date(dateStr);  
+  
+  const diffDays = Math.floor(  
+    (current - BASE_CYCLE) / (1000 * 60 * 60 * 24)  
+  );  
+  
+  const cycleIndex = Math.floor(diffDays / 14);  
+  
+  const start = new Date(BASE_CYCLE);  
+  start.setDate(BASE_CYCLE.getDate() + (cycleIndex * 14));  
+  
+  const end = new Date(start);  
+  end.setDate(start.getDate() + 13);  
+  
+  return {  
+    start: start.toISOString().split("T")[0],  
+    end: end.toISOString().split("T")[0]  
+  };  
+}  
+  function checkSpecialDuty() {
+
+  const trainInput = document.getElementById("trainNo");
+  const value = trainInput.value.trim().toUpperCase();
+
+  const specialKeywords = [
+    "SICK",
+    "LEAVE",
+    "TRAINING",
+    "RC",
+    "SPL"
+  ];
+
+  const isSpecial = specialKeywords.some(keyword =>
+    value.includes(keyword)
+  );
+
+  const from = document.getElementById("from");
+  const to = document.getElementById("to");
+  const signOn = document.getElementById("signOn");
+  const signOff = document.getElementById("signOff");
+
+  if (isSpecial) {
+
+    // Disable fields
+    from.value = "";
+    to.value = "";
+    signOn.value = "";
+    signOff.value = "";
+
+    from.disabled = true;
+    to.disabled = true;
+    signOn.disabled = true;
+    signOff.disabled = true;
+
+  } else {
+
+    // Enable fields
+    from.disabled = false;
+    to.disabled = false;
+    signOn.disabled = false;
+    signOff.disabled = false;
+  }
+}
+  
+  
+</script>  </body>  
+</html>
