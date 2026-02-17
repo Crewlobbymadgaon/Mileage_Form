@@ -430,9 +430,6 @@ button:active {
 <script>  
   
 
-
-  
-  
   
   
 const BASE_CYCLE = new Date("2026-01-25"); // Fixed starting cycle  
@@ -529,18 +526,11 @@ function calculateNightMinutes(date, on, off) {
   return Math.floor(totalNightMinutes);  
 }  
   
-function addDuty(){
+function addDuty() {
 
   const dutyDate = document.getElementById("dutyDate").value;
-  const today = new Date().toISOString().split("T")[0];
-
-  if (dutyDate > today) {
-    showToast("⚠️ Future date not allowed");
-    return;
-  }
-
   const trainInput = document.getElementById("trainNo").value.trim();
-  const trainValue = trainInput.toUpperCase();   // 🔥 FORCE UPPERCASE
+  const trainValue = trainInput.toUpperCase();
 
   const from = document.getElementById("from").value.toUpperCase();
   const to = document.getElementById("to").value.toUpperCase();
@@ -548,45 +538,50 @@ function addDuty(){
   const signOff = document.getElementById("signOff").value;
   const kms = Number(document.getElementById("kms").value) || 0;
 
-  if(!dutyDate || !trainInput){
+  if (!dutyDate || !trainInput) {
     showToast("⚠️ Fill required fields");
     return;
   }
 
-  // 🔴 Full Disable + 07:25
+  // 🚫 Future Date / Time Block
+  const now = new Date();
+  const selectedDateTime = signOn
+    ? new Date(dutyDate + "T" + signOn)
+    : new Date(dutyDate);
+
+  if (selectedDateTime > now) {
+    showToast("⚠️ Future date/time not allowed");
+    return;
+  }
+
+  // ===== Special Types =====
+  const specialTypes = [
+    "PR","WFD","SICK","LEAVE","TRAINING","RC","SPL","ALK"
+  ];
+
+  const isSpecialEntry = specialTypes.includes(trainValue);
+
   const fullDisable725 = ["SICK","LEAVE"];
-
-  // 🟡 Partial Disable + 07:25
   const partialDisable725 = ["TRAINING","RC","SPL","ALK"];
-
-  // ⚫ Full Disable + 0:00
   const zeroDutyTypes = ["PR","WFD"];
 
-  const isFull725 = fullDisable725.some(k => trainValue.includes(k));
-  const isPartial725 = partialDisable725.some(k => trainValue.includes(k));
-  const isZeroDuty = zeroDutyTypes.some(k => trainValue.includes(k));
+  const isFull725 = fullDisable725.includes(trainValue);
+  const isPartial725 = partialDisable725.includes(trainValue);
+  const isZeroDuty = zeroDutyTypes.includes(trainValue);
 
   let dutyMinutes = 0;
   let nightMinutes = 0;
 
-  // ================= ZERO DUTY =================
   if (isZeroDuty) {
-
     dutyMinutes = 0;
     nightMinutes = 0;
-
   }
-  // ================= 07:25 TYPES =================
   else if (isFull725 || isPartial725) {
-
     dutyMinutes = (7 * 60) + 25;
     nightMinutes = 0;
-
   }
-  // ================= NORMAL TRAIN =================
   else {
-
-    if(!from || !to || !signOn || !signOff || !kms){
+    if (!from || !to || !signOn || !signOff || !kms) {
       showToast("⚠️ Fill all fields");
       return;
     }
@@ -597,7 +592,7 @@ function addDuty(){
 
   const duty = {
     dutyDate,
-    trainNo: trainValue,   // 🔥 SAVE ALWAYS UPPERCASE
+    trainNo: trainValue,
     from: (isFull725 || isPartial725 || isZeroDuty) ? "" : from,
     to: (isFull725 || isPartial725 || isZeroDuty) ? "" : to,
     signOn: (isFull725 || isPartial725 || isZeroDuty) ? "" : signOn,
@@ -607,22 +602,63 @@ function addDuty(){
     nightMinutes
   };
 
-  const tx = db.transaction("duties","readwrite");
-  tx.objectStore("duties").add(duty);
+  // ===== Same-Date Strict Lock Check =====
 
-  tx.oncomplete = () => {
+  const txCheck = db.transaction("duties","readonly");
+  const store = txCheck.objectStore("duties");
+  const request = store.getAll();
 
-    showToast("✅ Duty Added");
-    document.getElementById("dutyForm").reset();
+  request.onsuccess = () => {
 
-    // 🔥 Re-enable fields after reset
-    document.getElementById("from").disabled = false;
-    document.getElementById("to").disabled = false;
-    document.getElementById("signOn").disabled = false;
-    document.getElementById("signOff").disabled = false;
-    document.getElementById("kms").disabled = false;
+    const data = request.result;
 
-    displayDuties();
+    const sameDateEntries = data.filter(d =>
+      d.dutyDate === dutyDate
+    );
+
+    if (sameDateEntries.length > 0) {
+
+      const existingHasSpecial = sameDateEntries.some(d =>
+        specialTypes.includes(d.trainNo)
+      );
+
+      const existingHasNormal = sameDateEntries.some(d =>
+        !specialTypes.includes(d.trainNo)
+      );
+
+      if (existingHasSpecial) {
+        showToast("❌ Date locked by special entry");
+        disableAllFields();
+        return;
+      }
+
+      if (isSpecialEntry && existingHasNormal) {
+        showToast("❌ Normal duty already exists on this date");
+        disableAllFields();
+        return;
+      }
+    }
+
+    // ===== SAVE DUTY =====
+
+    const tx = db.transaction("duties","readwrite");
+    tx.objectStore("duties").add(duty);
+
+    tx.oncomplete = () => {
+
+      showToast("✅ Duty Added");
+
+      document.getElementById("dutyForm").reset();
+
+      // Re-enable fields
+      document.getElementById("from").disabled = false;
+      document.getElementById("to").disabled = false;
+      document.getElementById("signOn").disabled = false;
+      document.getElementById("signOff").disabled = false;
+      document.getElementById("kms").disabled = false;
+
+      displayDuties();
+    };
   };
 }
   
@@ -735,35 +771,26 @@ let cycleDuties = data.filter(x =>
   x.dutyDate >= fn.start && x.dutyDate <= fn.end  
 );  
   
-if (cycleDuties.length === 0) {  
-  var isCycleEnd = false;  
-} else {  
+if (cycleDuties.length === 0) {
+  var isCycleEnd = false;
+} else {
+
+  cycleDuties.sort((a, b) => {
+
+    if (a.dutyDate === b.dutyDate) {
+      return a.id - b.id;   // last added wins
+    }
+
+    return new Date(a.dutyDate) - new Date(b.dutyDate);
+  });
+
+  let lastDuty = cycleDuties[cycleDuties.length - 1];
+
+  var isCycleEnd = (d.id === lastDuty.id);
+}
   
   // Calculate real end datetime for each duty  
-  cycleDuties.forEach(x => {  
-    let start = new Date(x.dutyDate + "T" + x.signOn);  
-    let end = new Date(x.dutyDate + "T" + x.signOff);  
   
-    // Overnight adjustment  
-    if (end <= start) {  
-      end.setDate(end.getDate() + 1);  
-    }  
-  
-    x._realEndDateTime = end;  
-  });  
-  
-  // Sort by real end datetime  
-  cycleDuties.sort((a,b) =>  
-    a._realEndDateTime - b._realEndDateTime  
-  );  
-  
-  let lastDuty = cycleDuties[cycleDuties.length - 1];  
-  
-  var isCycleEnd =  
-    d.dutyDate === lastDuty.dutyDate &&  
-    d.signOn === lastDuty.signOn &&  
-    d.signOff === lastDuty.signOff;  
-}  
   
   let progClass = isCycleEnd ? "prog-col cycle-end" : "prog-col";  
   
@@ -1337,15 +1364,57 @@ document.addEventListener("DOMContentLoaded", function () {
   const display = document.getElementById("displayDate");  
   document.getElementById("trainNo").addEventListener("input", function() {
 
-  const value = this.value.toUpperCase();
+  const value = this.value.trim().toUpperCase();
+  this.value = value; // force uppercase
 
-  const fullDisable725 = ["SICK","LEAVE"];
-  const partialDisable725 = ["TRAINING","RC","SPL","ALK"];
-  const zeroDutyTypes = ["PR","WFD"];
+  const dutyDate = document.getElementById("dutyDate").value;
+  if (!dutyDate) return;
 
-  const isFull725 = fullDisable725.some(k => value.includes(k));
-  const isPartial725 = partialDisable725.some(k => value.includes(k));
-  const isZeroDuty = zeroDutyTypes.some(k => value.includes(k));
+  const specialTypes = [
+    "PR","WFD","SICK","LEAVE","TRAINING","RC","SPL","ALK"
+  ];
+
+  const isSpecialEntry = specialTypes.includes(value);
+
+  // 🔎 Check existing entries for same date
+  const tx = db.transaction("duties","readonly");
+  const store = tx.objectStore("duties");
+  const request = store.getAll();
+
+  request.onsuccess = () => {
+
+    const data = request.result;
+
+    const sameDateEntries = data.filter(d =>
+      d.dutyDate === dutyDate
+    );
+
+    if (sameDateEntries.length === 0) return;
+
+    const existingHasSpecial = sameDateEntries.some(d =>
+      specialTypes.includes(d.trainNo)
+    );
+
+    const existingHasNormal = sameDateEntries.some(d =>
+      !specialTypes.includes(d.trainNo)
+    );
+
+    // 🚫 If special already exists → block everything
+    if (existingHasSpecial) {
+      showToast("❌ Date locked by special entry");
+      this.value = "";
+      return;
+    }
+
+    // 🚫 If adding special but normal exists
+    if (isSpecialEntry && existingHasNormal) {
+      showToast("❌ Normal duty already exists on this date");
+      this.value = "";
+      return;
+    }
+  };
+
+  // ======= FIELD ENABLE/DISABLE LOGIC =======
 
   const from = document.getElementById("from");
   const to = document.getElementById("to");
@@ -1353,56 +1422,38 @@ document.addEventListener("DOMContentLoaded", function () {
   const signOff = document.getElementById("signOff");
   const kms = document.getElementById("kms");
 
-  // 🔴 PR / WFD (ALL DISABLE)
-  if (isZeroDuty) {
+  const fullDisable725 = ["SICK","LEAVE"];
+  const partialDisable725 = ["TRAINING","RC","SPL","ALK"];
+  const zeroDutyTypes = ["PR","WFD"];
 
+  if (zeroDutyTypes.includes(value)) {
     from.disabled = true;
     to.disabled = true;
     signOn.disabled = true;
     signOff.disabled = true;
     kms.disabled = true;
-
-    from.value = "";
-    to.value = "";
-    signOn.value = "";
-    signOff.value = "";
-    kms.value = "";
-
   }
-
-  // 🟡 SICK / LEAVE (ALL DISABLE)
-  else if (isFull725) {
-
+  else if (fullDisable725.includes(value)) {
     from.disabled = true;
     to.disabled = true;
     signOn.disabled = true;
     signOff.disabled = true;
     kms.disabled = true;
-
   }
-
-  // 🔵 TRAINING / RC / SPL / ALK (KM ENABLED)
-  else if (isPartial725) {
-
+  else if (partialDisable725.includes(value)) {
     from.disabled = true;
     to.disabled = true;
     signOn.disabled = true;
     signOff.disabled = true;
     kms.disabled = false;
-
   }
-
-  // 🟢 NORMAL TRAIN
   else {
-
     from.disabled = false;
     to.disabled = false;
     signOn.disabled = false;
     signOff.disabled = false;
     kms.disabled = false;
-
   }
-
 });
   dateInput.setAttribute("max", today);  
   dateInput.value = today;  
@@ -1490,7 +1541,20 @@ function getFortnightRange(dateStr) {
   }
 }
   
-  
+  function disableAllFields() {
+
+  document.getElementById("from").value = "";
+  document.getElementById("to").value = "";
+  document.getElementById("signOn").value = "";
+  document.getElementById("signOff").value = "";
+  document.getElementById("kms").value = "";
+
+  document.getElementById("from").disabled = true;
+  document.getElementById("to").disabled = true;
+  document.getElementById("signOn").disabled = true;
+  document.getElementById("signOff").disabled = true;
+  document.getElementById("kms").disabled = true;
+}
 </script>  
   <script>
 if ("serviceWorker" in navigator) {
