@@ -429,8 +429,15 @@ button:active {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs }
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  deleteDoc, 
+  doc,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCsyFfNhcDUoNLqbtl12dBzccnFsKJmKLk",
@@ -449,11 +456,41 @@ window.dbCloud = dbCloud;
 window.addDoc = addDoc;
 window.collection = collection;
 window.getDocs = getDocs;
+window.deleteDoc = deleteDoc;
+window.doc = doc;
+window.onSnapshot = onSnapshot;
 </script>
 
 <script>  
   
+function listenToRealtimeDuties() {
 
+  const crew = JSON.parse(localStorage.getItem("crewDetails") || "{}");
+  if (!crew.empId) return;
+
+  const dutiesRef = collection(dbCloud, "crew", crew.empId, "duties");
+
+  onSnapshot(dutiesRef, (snapshot) => {
+
+    console.log("🔥 Real-time update received");
+
+    const tx = db.transaction("duties", "readwrite");
+    const store = tx.objectStore("duties");
+
+    store.clear(); // Clear local DB first
+
+    snapshot.forEach(docSnap => {
+      store.add({
+        ...docSnap.data(),
+        cloudId: docSnap.id   // store cloud ID for delete
+      });
+    });
+
+    tx.oncomplete = () => {
+      displayDuties();
+    };
+  });
+}
   
   
 const BASE_CYCLE = new Date("2026-01-25"); // Fixed starting cycle  
@@ -470,7 +507,7 @@ request.onupgradeneeded = e => {
 request.onsuccess = async e => {
   db = e.target.result;
 
-  await syncFromCloud();   // 🔥 add this
+  listenToRealtimeDuties();  // 🔥 add this
 
   checkFirstTime();
   displayDuties();
@@ -582,13 +619,13 @@ function addDuty() {
 
   // ===== Special Types =====
   const specialTypes = [
-    "PR","WFD","SICK","LEAVE","TRAINING","RC","SPL","ALK"
+    "PR","WFD","SICK","LEAVE","TRAINING","RC","SPL DUTY","ALK"
   ];
 
   const isSpecialEntry = specialTypes.includes(trainValue);
 
   const fullDisable725 = ["SICK","LEAVE"];
-  const partialDisable725 = ["TRAINING","RC","SPL","ALK"];
+  const partialDisable725 = ["TRAINING","RC","SPL DUTY","ALK"];
   const zeroDutyTypes = ["PR","WFD"];
 
   const isFull725 = fullDisable725.includes(trainValue);
@@ -1268,12 +1305,51 @@ const startX = (pageWidth - tableWidth) / 2;
   doc.save("Duty_Register_" + monthText.replace(" ", "_") + ".pdf");
 }
   
-function deleteDuty(id){
+async function deleteDuty(id){
+
   const tx = db.transaction("duties","readwrite");
-  tx.objectStore("duties").delete(id);
-  tx.oncomplete = () => displayDuties();
+  const store = tx.objectStore("duties");
+
+  const getReq = store.get(id);
+
+  getReq.onsuccess = async function(){
+
+    const duty = getReq.result;
+
+    if (!duty) return;
+
+    // 🔹 Delete from IndexedDB first
+    store.delete(id);
+
+    tx.oncomplete = async function(){
+
+      // 🔹 Delete from Firestore
+      const crew = JSON.parse(localStorage.getItem("crewDetails") || "{}");
+
+      if (crew.empId) {
+
+        const snapshot = await getDocs(
+          collection(dbCloud, "crew", crew.empId, "duties")
+        );
+
+        for (const docSnap of snapshot.docs) {
+
+          const d = docSnap.data();
+
+          if (
+            d.dutyDate === duty.dutyDate &&
+            d.trainNo === duty.trainNo &&
+            d.signOn === duty.signOn
+          ) {
+            await deleteDoc(docSnap.ref);
+          }
+        }
+      }
+
+      displayDuties();
+    };
+  };
 }
-  
   
 function showToast(message){  
   const toast = document.getElementById("toast");  
@@ -1544,7 +1620,7 @@ function getFortnightRange(dateStr) {
     "LEAVE",
     "TRAINING",
     "RC",
-    "SPL"
+    "SPL DUTY"
   ];
 
   const isSpecial = specialKeywords.some(keyword =>
@@ -1607,8 +1683,24 @@ async function syncFromCloud() {
   const tx = db.transaction("duties", "readwrite");
   const store = tx.objectStore("duties");
 
+  const localData = await new Promise(resolve => {
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+  });
+
   snapshot.forEach(docSnap => {
-    store.add(docSnap.data());
+
+    const cloudDuty = docSnap.data();
+
+    const exists = localData.some(local =>
+      local.dutyDate === cloudDuty.dutyDate &&
+      local.trainNo === cloudDuty.trainNo &&
+      local.signOn === cloudDuty.signOn
+    );
+
+    if (!exists) {
+      store.add(cloudDuty);
+    }
   });
 }
 </script>  
