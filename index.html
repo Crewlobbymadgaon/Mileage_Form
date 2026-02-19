@@ -427,6 +427,30 @@ button:active {
 <div id="toast" class="toast">✅ Duty Added Successfully</div>  
 
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs }
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCsyFfNhcDUoNLqbtl12dBzccnFsKJmKLk",
+  authDomain: "mileage-form-4bc0a.firebaseapp.com",
+  projectId: "mileage-form-4bc0a",
+  storageBucket: "mileage-form-4bc0a.firebasestorage.app",
+  messagingSenderId: "170439363720",
+  appId: "1:170439363720:web:47d4c5d775eb553256233d"
+};
+
+const app = initializeApp(firebaseConfig);
+const dbCloud = getFirestore(app);
+
+// 🔥 Make globally accessible
+window.dbCloud = dbCloud;
+window.addDoc = addDoc;
+window.collection = collection;
+window.getDocs = getDocs;
+</script>
+
 <script>  
   
 
@@ -443,12 +467,14 @@ request.onupgradeneeded = e => {
   db.createObjectStore("duties", { keyPath:"id", autoIncrement:true });  
 };  
   
-request.onsuccess = e => {  
-  db = e.target.result;  
-  checkFirstTime();  
-  displayDuties();  
-};  
-  
+request.onsuccess = async e => {
+  db = e.target.result;
+
+  await syncFromCloud();   // 🔥 add this
+
+  checkFirstTime();
+  displayDuties();
+};
   
   
 function calculateMinutes(date, on, off) {  
@@ -647,6 +673,15 @@ function addDuty() {
     tx.oncomplete = () => {
 
       showToast("✅ Duty Added");
+// 🔵 AUTO CLOUD BACKUP
+const crew = JSON.parse(localStorage.getItem("crewDetails") || "{}");
+
+if (crew.empId) {
+  addDoc(
+    collection(dbCloud, "crew", crew.empId, "duties"),
+    duty
+  );
+}
 
       document.getElementById("dutyForm").reset();
 
@@ -796,14 +831,14 @@ if (cycleDuties.length === 0) {
   
   rows += `<tr>  
      <td>${formatDate(d.dutyDate)}</td>  
-     <td>${d.trainNo}</td>  
-     <td>${d.from}</td>  
-     <td>${d.to}</td>  
-     <td>${d.signOn}</td>  
-     <td>${d.signOff}</td>  
-     <td>${minutesToHHMM(d.dutyMinutes)}</td>  
-     <td>${minutesToHHMM(d.nightMinutes)}</td>  
-     <td>${d.kms}</td>  
+     <td>${d.trainNo || "-"}</td>
+<td>${d.from || "-"}</td>
+<td>${d.to || "-"}</td>
+<td>${d.signOn || "-"}</td>
+<td>${d.signOff || "-"}</td>
+<td>${minutesToHHMM(d.dutyMinutes)}</td>
+<td>${minutesToHHMM(d.nightMinutes)}</td>
+<td>${d.kms > 0 ? d.kms : "-"}</td>
   
      <td class="${progClass}">  
        ${minutesToHHMM(d._cycleProg)}  
@@ -1037,7 +1072,7 @@ async function exportPDF() {
         doc.setFont(undefined, "normal");
       }
 
-      const text = String(cell);
+ const text = (cell === "" || cell === null || cell === undefined) ? "-" : String(cell);
       const maxWidth = cellWidth - 2;
       const splitText = doc.splitTextToSize(text, maxWidth);
       const textHeight = splitText.length * 3.5;
@@ -1141,10 +1176,19 @@ async function exportPDF() {
     totalKM += parseInt(cells[8].innerText) || 0;
   });
 
-  const startX = 35;
-  const col1 = 70;
-  const col2 = 35;
-  const rowH = 10;
+
+
+// ================= CENTERED SUMMARY TABLE =================
+
+// Table dimensions
+const col1 = 80;   // Period column
+const col2 = 35;   // Hours column
+const tableWidth = col1 + col2;
+const rowH = 10;
+
+// 🔵 AUTO CENTER HORIZONTALLY
+const startX = (pageWidth - tableWidth) / 2;
+  
 
   doc.setFontSize(12);
   doc.setFont(undefined, "bold");
@@ -1417,7 +1461,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const kms = document.getElementById("kms");
 
   const fullDisable725 = ["SICK","LEAVE"];
-  const partialDisable725 = ["TRAINING","RC","SPL","ALK"];
+  const partialDisable725 = ["TRAINING","RC","SPL DUTY","ALK"];
   const zeroDutyTypes = ["PR","WFD"];
 
   if (zeroDutyTypes.includes(value)) {
@@ -1548,6 +1592,24 @@ function getFortnightRange(dateStr) {
   document.getElementById("signOn").disabled = true;
   document.getElementById("signOff").disabled = true;
   document.getElementById("kms").disabled = true;
+}
+
+
+async function syncFromCloud() {
+
+  const crew = JSON.parse(localStorage.getItem("crewDetails") || "{}");
+  if (!crew.empId) return;
+
+  const snapshot = await getDocs(
+    collection(dbCloud, "crew", crew.empId, "duties")
+  );
+
+  const tx = db.transaction("duties", "readwrite");
+  const store = tx.objectStore("duties");
+
+  snapshot.forEach(docSnap => {
+    store.add(docSnap.data());
+  });
 }
 </script>  
   <script>
